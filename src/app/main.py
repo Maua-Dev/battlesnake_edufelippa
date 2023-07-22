@@ -36,7 +36,7 @@ def start_func() :
     return "ok"
 
 @app.post("/move")
-def start_func() :
+def move_func() :
     data = request.get_json()
 
 
