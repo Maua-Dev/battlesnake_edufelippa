@@ -7,7 +7,13 @@ app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"Eduardo": "Felippa"}
+    return {
+        "apiversion": "1",
+        "author": "eduSnake",
+        "color": "#00ffff",
+        "head": "replit-mark",
+        "tail": "rocket",
+    }
 
 
 @app.get("/items/{item_id}")
@@ -18,9 +24,16 @@ def read_item(item_id: int):
 def create_item(request: dict):
     item_id = request.get("item_id")
     name = request.get("name")
+    print(name)
 
     return {"item_id": item_id,
-            "name": name}   
+            "name": name}
+
+@app.post("/start")
+def start_func() :
+    data = request.get_json()
+    print(data)
+    return "ok"
 
 
 handler = Mangum(app, lifespan="off")

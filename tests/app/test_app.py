@@ -5,7 +5,11 @@ class Test_App:
     def test_read_root(self):
         resp = read_root()
         
-        assert resp == {"Eduardo": "Felippa"}
+        assert resp == {"apiversion": "1",
+        "author": "eduSnake",
+        "color": "#00ffff",
+        "head": "replit-mark",
+        "tail": "rocket",}
 
     def test_get_item(self):
         
