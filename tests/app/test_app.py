@@ -9,7 +9,7 @@ class Test_App:
         "author": "eduSnake",
         "color": "#00ffff",
         "head": "replit-mark",
-        "tail": "rocket",}
+        "tail": "mouse",}
 
     def test_get_item(self):
         
