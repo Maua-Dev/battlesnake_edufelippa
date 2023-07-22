@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from mangum import Mangum
+import snake_ai
 
 app = FastAPI()
 
@@ -16,7 +17,7 @@ def read_root():
     }
 
 
-@app.get("/items/{item_id}")
+""" @app.get("/items/{item_id}")
 def read_item(item_id: int):
     return {"item_id": item_id}
 
@@ -27,18 +28,20 @@ def create_item(request: dict):
     print(request)
 
     return {"item_id": item_id,
-            "name": name}
+            "name": name} """
 
 @app.post("/start")
 def start_func(request: dict) :
-    data = request.get("game").get("id")
+    data = request["game"]["id"]
     print(data)
     return "ok"
 
 @app.post("/move")
-def move_func(request: dict) :
+def move_func(game : dict, turn : int, board : dict, me : dict) :
 
-    return {"move": "left"}
+    possibleTiles = snake_ai.avoidEdges(me, board)
+
+    return snake_ai.randomMove(possibleTiles)
 
 
 handler = Mangum(app, lifespan="off")
