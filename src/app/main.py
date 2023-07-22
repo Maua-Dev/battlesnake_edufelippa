@@ -35,5 +35,12 @@ def start_func() :
     print(data)
     return "ok"
 
+@app.post("/move")
+def start_func() :
+    data = request.get_json()
+
+
+    return {"move": "left"}
+
 
 handler = Mangum(app, lifespan="off")
