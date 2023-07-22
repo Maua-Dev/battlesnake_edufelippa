@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from mangum import Mangum
-import snake_ai
+import random
+
 
 app = FastAPI()
 
@@ -17,7 +18,7 @@ def read_root():
     }
 
 
-""" @app.get("/items/{item_id}")
+@app.get("/items/{item_id}")
 def read_item(item_id: int):
     return {"item_id": item_id}
 
@@ -28,7 +29,7 @@ def create_item(request: dict):
     print(request)
 
     return {"item_id": item_id,
-            "name": name} """
+            "name": name}
 
 @app.post("/start")
 def start_func(request: dict) :
@@ -39,9 +40,48 @@ def start_func(request: dict) :
 @app.post("/move")
 def move_func(game : dict, turn : int, board : dict, me : dict) :
 
-    possibleTiles = snake_ai.avoidEdges(me, board)
+    possibleTiles = avoidEdges(me, board)
 
-    return snake_ai.randomMove(possibleTiles)
+    return randomMove(possibleTiles)
+
+def getNextTiles(me : dict) :
+    myHead = me["head"]
+    headX = myHead["x"]
+    headY = myHead["y"]
+
+    adjacentTiles = {"up" : {"x":headX, "y":headY+1},
+                         "down" : {"x":headX, "y":headY-1},
+                         "left" : {"x":headX-1, "y":headY},
+                         "right" : {"x":headX+1, "y":headY}}
+
+    return adjacentTiles
+
+def avoidBackwards(me : dict) :
+    possibleTiles = getNextTiles(me)
+    myBack = me["body"][1]
+    for k in ["up","down","left","right"]:
+        if possibleTiles[k] == myBack:
+            del possibleTiles[k]
+            return possibleTiles
+    return possibleTiles
+
+def avoidEdges(me : dict, board : dict) :
+    possibleTiles = avoidBackwards(me)
+    lastX = board["width"] - 1
+    lastY = board["height"] - 1
+    if me["head"]["x"] == 0:
+        del possibleTiles["left"]
+    elif me["head"]["y"] == 0:
+        del possibleTiles["down"]
+    elif me["head"]["x"] == lastX:
+        del possibleTiles["right"]
+    elif me["head"]["y"] == lastY:
+        del possibleTiles["up"]
+    return possibleTiles
+
+def randomMove(possibleTiles : dict) :
+    possibleDirections = list(possibleTiles.keys())
+    return random.choice(possibleDirections)
 
 
 handler = Mangum(app, lifespan="off")
