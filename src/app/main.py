@@ -12,7 +12,7 @@ def read_root():
         "author": "eduSnake",
         "color": "#00ffff",
         "head": "replit-mark",
-        "tail": "rocket",
+        "tail": "mouse",
     }
 
 
