@@ -24,21 +24,19 @@ def read_item(item_id: int):
 def create_item(request: dict):
     item_id = request.get("item_id")
     name = request.get("name")
-    print(name)
+    print(request)
 
     return {"item_id": item_id,
             "name": name}
 
 @app.post("/start")
-def start_func() :
-    data = request.get_json()
+def start_func(request: dict) :
+    data = request.get("game").get("id")
     print(data)
     return "ok"
 
 @app.post("/move")
-def move_func() :
-    data = request.get_json()
-
+def move_func(request: dict) :
 
     return {"move": "left"}
 
