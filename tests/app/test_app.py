@@ -5,7 +5,7 @@ class Test_App:
     def test_read_root(self):
         resp = read_root()
         
-        assert resp == {"Hello": "World"}
+        assert resp == {"Eduardo": "Felippa"}
 
     def test_get_item(self):
         
