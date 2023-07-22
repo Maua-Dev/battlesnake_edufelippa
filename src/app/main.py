@@ -1,7 +1,13 @@
 from fastapi import FastAPI
+from pydantic import BaseModel
 from mangum import Mangum
 import random
 
+class body(BaseModel):
+    game    : dict
+    turn    : int
+    board   : dict
+    you     : dict
 
 app = FastAPI()
 
@@ -38,11 +44,12 @@ def start_func(request: dict) :
     return "ok"
 
 @app.post("/move")
-def move_func(game : dict, turn : int, board : dict, me : dict) :
+def move_func(body : body) :
 
-    possibleTiles = avoidEdges(me, board)
+    possibleTiles = avoidEdges(body.you, body.board)
+    move = randomMove(possibleTiles)
 
-    return randomMove(possibleTiles)
+    return {"move" : move}
 
 def getNextTiles(me : dict) :
     myHead = me["head"]
@@ -80,8 +87,8 @@ def avoidEdges(me : dict, board : dict) :
     return possibleTiles
 
 def randomMove(possibleTiles : dict) :
-    possibleDirections = list(possibleTiles.keys())
-    return random.choice(possibleDirections)
+    move = random.choice(list(possibleTiles.keys()))
+    return move
 
 
 handler = Mangum(app, lifespan="off")
