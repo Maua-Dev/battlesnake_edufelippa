@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from mangum import Mangum
 import random
+import copy
 
 class body(BaseModel):
     game    : dict
@@ -11,7 +12,8 @@ class body(BaseModel):
 
 app = FastAPI()
 
-# TODO: Implement my logic here to handle the requests from Battlesnake
+myLastMove = ""
+mySnakeID = ""
 
 @app.get("/")
 def read_root():
@@ -38,57 +40,124 @@ def create_item(request: dict):
             "name": name}
 
 @app.post("/start")
-def start_func(request: dict) :
-    data = request["game"]["id"]
-    print(data)
+def start_func(request: body) :
+    #gameID = request.game["id"]
+    global mySnakeID
+    mySnakeID = request.you["id"]
+    #print("Game ID: ", gameID)
+    print("mySnakeID: ", mySnakeID)
     return "ok"
 
+@app.post("/end")
+def end_func() :
+    return "ok"
+    
+
 @app.post("/move")
-def move_func(body : body) :
+def move_func(request : body) :
 
-    possibleTiles = avoidEdges(body.you, body.board)
-    move = randomMove(possibleTiles)
+    possibleTiles = avoidAllSnakes(request.you, request.board)
+    move, deuRuim = randomMove(possibleTiles)
 
-    return {"move" : move}
+    global myLastMove
+    myLastMove = move
+    print("Move: ", move)
+    print("deuRuim: ",deuRuim)
 
-def getNextTiles(me : dict) :
-    myHead = me["head"]
-    headX = myHead["x"]
-    headY = myHead["y"]
-
-    adjacentTiles = {"up" : {"x":headX, "y":headY+1},
-                         "down" : {"x":headX, "y":headY-1},
-                         "left" : {"x":headX-1, "y":headY},
-                         "right" : {"x":headX+1, "y":headY}}
-
+    return {"move" : move,
+            "shout": "F"}
+def getAdjacentTiles(pos : dict):
+    xPos = pos["x"]
+    yPos = pos["y"]
+    adjacentTiles = {"up" : {"x":xPos, "y":yPos+1},
+                     "down" : {"x":xPos, "y":yPos-1},
+                     "left" : {"x":xPos-1, "y":yPos},
+                     "right" : {"x":xPos+1, "y":yPos}}
     return adjacentTiles
 
-def avoidBackwards(me : dict) :
+def getMyNextTiles(me : dict) :
+    myHead = me["head"]
+    nextTiles = getAdjacentTiles(myHead)
+    return nextTiles
+
+""" def avoidBackwards(me : dict) :
     possibleTiles = getNextTiles(me)
     myBack = me["body"][1]
     for k in ["up","down","left","right"]:
         if possibleTiles[k] == myBack:
             del possibleTiles[k]
             return possibleTiles
-    return possibleTiles
+    return possibleTiles """
 
 def avoidEdges(me : dict, board : dict) :
-    possibleTiles = avoidBackwards(me)
+    possibleTiles = getMyNextTiles(me)
     lastX = board["width"] - 1
     lastY = board["height"] - 1
     if me["head"]["x"] == 0:
         del possibleTiles["left"]
-    elif me["head"]["y"] == 0:
-        del possibleTiles["down"]
     elif me["head"]["x"] == lastX:
         del possibleTiles["right"]
+
+    if me["head"]["y"] == 0:
+        del possibleTiles["down"]
     elif me["head"]["y"] == lastY:
         del possibleTiles["up"]
+
     return possibleTiles
 
+def avoidAllSnakes(me : dict, board : dict) :
+    possibleTiles = avoidEdges(me,board)
+    possibleTilesCpy = copy.deepcopy(possibleTiles)
+    for move in possibleTilesCpy:
+        if move in possibleTiles.keys():
+            print(move)
+            for snake in board["snakes"]:
+                index = 0
+                snakeLen = snake["length"]
+                for bodyPartPos in snake["body"]:
+                    if index == 0 and snake["id"] != mySnakeID:
+                        snakeAdjacentTiles = getAdjacentTiles(bodyPartPos)
+                        for direction in ["up","down","left","right"]:
+                            if move in possibleTiles.keys():
+                                if snakeAdjacentTiles[direction] == possibleTiles[move]:
+                                    del possibleTiles[move]
+                                    print("deleted: ",move)
+                    if index == snakeLen - 1:
+                        if not hasSnakeEaten(snake):
+                            index += 1
+                            continue
+                    if move in possibleTiles.keys():
+                        if bodyPartPos == possibleTiles[move]:
+                            del possibleTiles[move]
+                    index += 1
+    print("possible:", possibleTiles)
+    return possibleTiles
+
+def checkLastMove(snake : dict):
+    if snake["head"]["x"] > snake["body"][1]["x"]:
+        return "right"
+    elif snake["head"]["x"] < snake["body"][1]["x"]:
+        return "left"
+    elif snake["head"]["y"] > snake["body"][1]["y"]:
+        return "up"
+    
+def isMySizeBigger(me : dict, snake : dict):
+    if(me["length"] > snake["length"]):
+        return True
+    else:
+        return False
+
+def hasSnakeEaten(snake : dict):
+    if(snake["health"] == 100):
+        return True
+
+# Se a vida estiver em 100, o rabo não vai andar
+
 def randomMove(possibleTiles : dict) :
+    if len(list(possibleTiles.keys())) <= 0:
+        return "down", True
     move = random.choice(list(possibleTiles.keys()))
-    return move
+    return move, False
 
 
 handler = Mangum(app, lifespan="off")
