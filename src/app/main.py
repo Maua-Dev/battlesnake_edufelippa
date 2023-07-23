@@ -12,7 +12,6 @@ class body(BaseModel):
 
 app = FastAPI()
 
-myLastMove = ""
 mySnakeID = ""
 
 @app.get("/")
@@ -61,8 +60,6 @@ def move_func(request : body) :
     if deuRuim == True:
         move, deuRuim = randomMove(possibleTiles)
 
-    global myLastMove
-    myLastMove = move
     print("Move: ", move)
     print("deuRuim: ",deuRuim)
 
@@ -130,6 +127,8 @@ def avoidAllSnakes(me : dict, board : dict) :
 def predictPossibleSnakes(me : dict, board : dict):
     possibleTiles = avoidAllSnakes(me,board)
     possibleTilesCpy = copy.deepcopy(possibleTiles)
+    killingMoves = []
+
     for move in possibleTilesCpy:
         if move in possibleTiles.keys():
             for snake in board["snakes"]:
@@ -137,16 +136,12 @@ def predictPossibleSnakes(me : dict, board : dict):
                     snakeAdjacentTiles = getAdjacentTiles(snake["head"])
                     for direction in ["up","down","left","right"]:
                         if snakeAdjacentTiles[direction] == possibleTiles[move]:
-                            del possibleTiles[move]
-    return possibleTilesCpy, possibleTiles
-
-def checkLastMove(snake : dict):
-    if snake["head"]["x"] > snake["body"][1]["x"]:
-        return "right"
-    elif snake["head"]["x"] < snake["body"][1]["x"]:
-        return "left"
-    elif snake["head"]["y"] > snake["body"][1]["y"]:
-        return "up"
+                            if isMySizeBigger(me,snake):
+                                if move not in killingMoves:
+                                    killingMoves.append(move)
+                            else:
+                                del possibleTiles[move]
+    return possibleTilesCpy, possibleTiles # RETORNAR KILLING MOVES TB E USAR NA DECISAO FINAL
     
 def isMySizeBigger(me : dict, snake : dict):
     if(me["length"] > snake["length"]):
@@ -157,7 +152,6 @@ def isMySizeBigger(me : dict, snake : dict):
 def hasSnakeEaten(snake : dict):
     if(snake["health"] == 100):
         return True
-
 # Se a vida estiver em 100, o rabo não vai andar
 
 def randomMove(possibleTiles : dict) :
