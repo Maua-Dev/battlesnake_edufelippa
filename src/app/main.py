@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from mangum import Mangum
 import random
 import copy
+from queue import Queue
 
 class body(BaseModel):
     game    : dict
@@ -13,6 +14,8 @@ class body(BaseModel):
 app = FastAPI()
 
 mySnakeID = ""
+boardWidth = 40
+boardHeight = 40
 
 @app.get("/")
 def read_root():
@@ -45,6 +48,11 @@ def start_func(request: body) :
     mySnakeID = request.you["id"]
     #print("Game ID: ", gameID)
     print("mySnakeID: ", mySnakeID)
+    global boardWidth
+    boardWidth = request.board["width"]
+    global boardHeight
+    boardHeight = request.board["height"]
+
     return "ok"
 
 @app.post("/end")
@@ -56,6 +64,8 @@ def end_func() :
 def move_func(request : body) :
 
     possibleTiles, possibleTilesPrediction = predictPossibleSnakes(request.you, request.board)
+    print("pTiles", possibleTiles)
+    print("pTilesPred", possibleTilesPrediction)
     move, deuRuim = randomMove(possibleTilesPrediction)
     if deuRuim == True:
         move, deuRuim = randomMove(possibleTiles)
@@ -65,6 +75,10 @@ def move_func(request : body) :
 
     return {"move" : move,
             "shout": "F"}
+
+
+
+
 def getAdjacentTiles(pos : dict):
     xPos = pos["x"]
     yPos = pos["y"]
@@ -88,10 +102,10 @@ def getMyNextTiles(me : dict) :
             return possibleTiles
     return possibleTiles """
 
-def avoidEdges(me : dict, board : dict) :
+def avoidEdges(me : dict) :
     possibleTiles = getMyNextTiles(me)
-    lastX = board["width"] - 1
-    lastY = board["height"] - 1
+    lastX = boardWidth - 1
+    lastY = boardHeight - 1
     if me["head"]["x"] == 0:
         del possibleTiles["left"]
     elif me["head"]["x"] == lastX:
@@ -105,7 +119,7 @@ def avoidEdges(me : dict, board : dict) :
     return possibleTiles
 
 def avoidAllSnakes(me : dict, board : dict) :
-    possibleTiles = avoidEdges(me,board)
+    possibleTiles = avoidEdges(me)
     possibleTilesCpy = copy.deepcopy(possibleTiles)
     for move in possibleTilesCpy:
         if move in possibleTiles.keys():
@@ -125,7 +139,7 @@ def avoidAllSnakes(me : dict, board : dict) :
     return possibleTiles
 
 def predictPossibleSnakes(me : dict, board : dict):
-    possibleTiles = avoidAllSnakes(me,board)
+    possibleTiles = predictClosedAreas(me,board)
     possibleTilesCpy = copy.deepcopy(possibleTiles)
     killingMoves = []
 
@@ -142,7 +156,50 @@ def predictPossibleSnakes(me : dict, board : dict):
                             else:
                                 del possibleTiles[move]
     return possibleTilesCpy, possibleTiles # RETORNAR KILLING MOVES TB E USAR NA DECISAO FINAL
-    
+
+def predictClosedAreas(me: dict, board : dict):
+    nextTiles = avoidAllSnakes(me, board)
+    resultingTiles = {}
+    fillSize = boardWidth*boardHeight/4 # número arbitrário de uma area grande o suficiente CALCULAR A PARTIR DA AREA DO MAPA - AREA OCUPADA
+    for move in nextTiles:
+        queue = Queue()
+        queue.put(nextTiles[move])
+        filledPositions = []
+        while not queue.empty():
+            pos = queue.get()
+            if pos["x"] < 0 or pos["y"] < 0 or pos["x"] >= boardWidth or pos["y"] >= boardHeight or \
+             isPosSnake(pos, board["snakes"]) or pos in filledPositions:
+                continue
+            else:
+                filledPositions.append(pos)
+                if(len(filledPositions) >= fillSize): 
+                    print("filled: ", filledPositions)
+                    resultingTiles[move] = nextTiles[move]
+                    break
+                adjTiles = getAdjacentTiles(pos)
+                queue.put(adjTiles["up"])
+                queue.put(adjTiles["down"])
+                queue.put(adjTiles["left"])
+                queue.put(adjTiles["right"])
+    print("afterArea: ",resultingTiles)
+    return resultingTiles
+
+def isPosSnake(pos : dict, snakes : dict):
+    for snake in snakes:
+        index = 0
+        snakeLen = snake["length"]
+        for bodyPartPos in snake["body"]:
+            if index == snakeLen - 1:
+                if not hasSnakeEaten(snake):
+                    index += 1
+                    continue
+                if bodyPartPos == pos:
+                    return True
+            if bodyPartPos == pos:
+                return True
+            index += 1
+    return False
+
 def isMySizeBigger(me : dict, snake : dict):
     if(me["length"] > snake["length"]):
         return True
