@@ -56,8 +56,10 @@ def end_func() :
 @app.post("/move")
 def move_func(request : body) :
 
-    possibleTiles = avoidAllSnakes(request.you, request.board)
-    move, deuRuim = randomMove(possibleTiles)
+    possibleTiles, possibleTilesPrediction = predictPossibleSnakes(request.you, request.board)
+    move, deuRuim = randomMove(possibleTilesPrediction)
+    if deuRuim == True:
+        move, deuRuim = randomMove(possibleTiles)
 
     global myLastMove
     myLastMove = move
@@ -80,7 +82,7 @@ def getMyNextTiles(me : dict) :
     nextTiles = getAdjacentTiles(myHead)
     return nextTiles
 
-""" def avoidBackwards(me : dict) :
+""" def avoidBackwards(me : dict) : # JA VERIFICADO PELO AVOID ALL SNAKES
     possibleTiles = getNextTiles(me)
     myBack = me["body"][1]
     for k in ["up","down","left","right"]:
@@ -110,18 +112,10 @@ def avoidAllSnakes(me : dict, board : dict) :
     possibleTilesCpy = copy.deepcopy(possibleTiles)
     for move in possibleTilesCpy:
         if move in possibleTiles.keys():
-            print(move)
             for snake in board["snakes"]:
                 index = 0
                 snakeLen = snake["length"]
                 for bodyPartPos in snake["body"]:
-                    if index == 0 and snake["id"] != mySnakeID:
-                        snakeAdjacentTiles = getAdjacentTiles(bodyPartPos)
-                        for direction in ["up","down","left","right"]:
-                            if move in possibleTiles.keys():
-                                if snakeAdjacentTiles[direction] == possibleTiles[move]:
-                                    del possibleTiles[move]
-                                    print("deleted: ",move)
                     if index == snakeLen - 1:
                         if not hasSnakeEaten(snake):
                             index += 1
@@ -132,6 +126,19 @@ def avoidAllSnakes(me : dict, board : dict) :
                     index += 1
     print("possible:", possibleTiles)
     return possibleTiles
+
+def predictPossibleSnakes(me : dict, board : dict):
+    possibleTiles = avoidAllSnakes(me,board)
+    possibleTilesCpy = copy.deepcopy(possibleTiles)
+    for move in possibleTilesCpy:
+        if move in possibleTiles.keys():
+            for snake in board["snakes"]:
+                if snake["id"] != mySnakeID:
+                    snakeAdjacentTiles = getAdjacentTiles(snake["head"])
+                    for direction in ["up","down","left","right"]:
+                        if snakeAdjacentTiles[direction] == possibleTiles[move]:
+                            del possibleTiles[move]
+    return possibleTilesCpy, possibleTiles
 
 def checkLastMove(snake : dict):
     if snake["head"]["x"] > snake["body"][1]["x"]:
