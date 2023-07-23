@@ -140,6 +140,8 @@ def avoidAllSnakes(me : dict, board : dict) :
 
 def predictPossibleSnakes(me : dict, board : dict):
     possibleTiles = predictClosedAreas(me,board)
+    if len(possibleTiles) == 0:
+        possibleTiles = avoidAllSnakes(me, board)
     possibleTilesCpy = copy.deepcopy(possibleTiles)
     killingMoves = []
 
@@ -160,8 +162,8 @@ def predictPossibleSnakes(me : dict, board : dict):
 def predictClosedAreas(me: dict, board : dict):
     nextTiles = avoidAllSnakes(me, board)
     resultingTiles = {}
-    fillSize = boardWidth*boardHeight/4 # número arbitrário de uma area grande o suficiente CALCULAR A PARTIR DA AREA DO MAPA - AREA OCUPADA
-    for move in nextTiles:
+    fillSize = (boardWidth*boardHeight - howManySnakeTiles(board["snakes"]))/4 # número arbitrário de uma area grande o suficiente CALCULAR A PARTIR DA AREA DO MAPA - AREA OCUPADA
+    for move in nextTiles:              # Adicionar logica para, em ultimo caso, ignorar o predictClosedAreas
         queue = Queue()
         queue.put(nextTiles[move])
         filledPositions = []
@@ -183,6 +185,12 @@ def predictClosedAreas(me: dict, board : dict):
                 queue.put(adjTiles["right"])
     print("afterArea: ",resultingTiles)
     return resultingTiles
+
+def howManySnakeTiles(snakes : dict):
+    sum = 0
+    for snake in snakes:
+        sum += snake["length"]
+    return sum
 
 def isPosSnake(pos : dict, snakes : dict):
     for snake in snakes:
