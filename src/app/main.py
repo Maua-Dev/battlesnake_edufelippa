@@ -4,7 +4,6 @@ from mangum import Mangum
 import random
 import copy
 from queue import Queue
-import time
 
 class body(BaseModel):
     game    : dict
@@ -17,7 +16,6 @@ app = FastAPI()
 mySnakeID = ""
 boardWidth = 40
 boardHeight = 40
-excedeuTempo = False
 
 @app.get("/")
 def read_root():
@@ -59,14 +57,12 @@ def start_func(request: body) :
 
 @app.post("/end")
 def end_func() :
-    print("Excedeu tempo: ", excedeuTempo)
     return "ok"
     
 
 @app.post("/move")
 def move_func(request : body) :
 
-    startTime = time.time()
     possibleTiles, possibleTilesPrediction = predictPossibleSnakes(request.you, request.board)
     print("pTiles", possibleTiles)
     print("pTilesPred", possibleTilesPrediction)
@@ -77,10 +73,6 @@ def move_func(request : body) :
     print("Move: ", move)
     print("deuRuim: ",deuRuim)
 
-    if time.time() - startTime > 0.1 :
-        global excedeuTempo
-        excedeuTempo = True
-    print("time elapsed: ",)
     return {"move" : move}
 
 
