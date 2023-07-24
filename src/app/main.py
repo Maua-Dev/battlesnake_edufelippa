@@ -243,7 +243,7 @@ def isPosSnake(pos : dict, snakes : dict):
     return False
 
 def isMySizeBigger(me : dict, snake : dict):
-    if(me["length"] > snake["length"]):
+    if me["length"] > snake["length"]:
         return True
     else:
         return False
