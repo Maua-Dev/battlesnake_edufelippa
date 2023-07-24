@@ -63,20 +63,13 @@ def end_func() :
 @app.post("/move")
 def move_func(request : body) :
 
-    possibleTiles, possibleTilesPrediction = predictPossibleSnakes(request.you, request.board)
-    print("pTiles", possibleTiles)
-    print("pTilesPred", possibleTilesPrediction)
-    move, deuRuim = randomMove(possibleTilesPrediction)
-    if deuRuim == True:
-        move, deuRuim = randomMove(possibleTiles)
+    possibleTiles = bestMoveForFood(request.you, request.board)
+    move, AmIDead = randomMove(possibleTiles)
 
     print("Move: ", move)
-    print("deuRuim: ",deuRuim)
+    print("deuRuim: ",AmIDead)
 
     return {"move" : move}
-
-
-
 
 def getAdjacentTiles(pos : dict):
     xPos = pos["x"]
@@ -183,8 +176,49 @@ def predictPossibleSnakes(me : dict, board : dict):
                                         killingMoves.append(move)
                                 else:
                                     del possibleTiles[move]
-    return possibleTilesCpy, possibleTiles # RETORNAR KILLING MOVES TB E USAR NA DECISAO FINAL
+    if len(possibleTiles) > 0:
+        return possibleTiles
+    else:
+        return possibleTilesCpy # RETORNAR KILLING MOVES TB E USAR NA DECISAO FINAL
 
+def bestMoveForFood(me : dict, board : dict):
+    
+    possibleMoves = predictPossibleSnakes(me, board)
+    remainingMoves = len(possibleMoves)
+    if remainingMoves < 2:
+        return possibleMoves
+
+    myHead = me["head"]
+    closestFood = findClosestPointFromMyPos(myHead, board["food"])
+    badMoves = []
+    if closestFood["x"] > myHead["x"]:
+        badMoves.append("left")
+    elif closestFood["x"] != myHead["x"]:
+        badMoves.append("right")
+    if closestFood["y"] > myHead["y"]:
+        badMoves.append("down")
+    elif closestFood["y"] != myHead["y"]:
+        badMoves.append("up")
+
+
+    for move in badMoves:
+        if move in possibleMoves:
+            del possibleMoves[move]
+            remainingMoves -= 1
+            if remainingMoves < 2:
+                break
+
+    return possibleMoves
+
+def findClosestPointFromMyPos(myPos : dict, points : dict):
+    minDist = -1
+    closestPos = {}
+    for pos in points:
+        dist = abs(pos["x"] - myPos["x"]) + abs(pos["y"] - myPos["y"])
+        if dist < minDist or minDist == -1 :
+            minDist = dist
+            closestPos = pos
+    return closestPos
 
 def howManySnakeTiles(snakes : dict):
     sum = 0
