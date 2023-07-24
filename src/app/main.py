@@ -4,6 +4,7 @@ from mangum import Mangum
 import random
 import copy
 from queue import Queue
+import time
 
 class body(BaseModel):
     game    : dict
@@ -16,6 +17,7 @@ app = FastAPI()
 mySnakeID = ""
 boardWidth = 40
 boardHeight = 40
+excedeuTempo = False
 
 @app.get("/")
 def read_root():
@@ -57,12 +59,14 @@ def start_func(request: body) :
 
 @app.post("/end")
 def end_func() :
+    print("Excedeu tempo: ", excedeuTempo)
     return "ok"
     
 
 @app.post("/move")
 def move_func(request : body) :
 
+    startTime = time.time()
     possibleTiles, possibleTilesPrediction = predictPossibleSnakes(request.you, request.board)
     print("pTiles", possibleTiles)
     print("pTilesPred", possibleTilesPrediction)
@@ -73,8 +77,11 @@ def move_func(request : body) :
     print("Move: ", move)
     print("deuRuim: ",deuRuim)
 
-    return {"move" : move,
-            "shout": "F"}
+    if time.time() - startTime > 0.1 :
+        global excedeuTempo
+        excedeuTempo = True
+    print("time elapsed: ",)
+    return {"move" : move}
 
 
 
@@ -135,29 +142,7 @@ def avoidAllSnakes(me : dict, board : dict) :
                         if bodyPartPos == possibleTiles[move]:
                             del possibleTiles[move]
                     index += 1
-    print("possible:", possibleTiles)
     return possibleTiles
-
-def predictPossibleSnakes(me : dict, board : dict):
-    possibleTiles = predictClosedAreas(me,board)
-    if len(possibleTiles) == 0:
-        possibleTiles = avoidAllSnakes(me, board)
-    possibleTilesCpy = copy.deepcopy(possibleTiles)
-    killingMoves = []
-
-    for move in possibleTilesCpy:
-        if move in possibleTiles.keys():
-            for snake in board["snakes"]:
-                if snake["id"] != mySnakeID:
-                    snakeAdjacentTiles = getAdjacentTiles(snake["head"])
-                    for direction in ["up","down","left","right"]:
-                        if snakeAdjacentTiles[direction] == possibleTiles[move]:
-                            if isMySizeBigger(me,snake):
-                                if move not in killingMoves:
-                                    killingMoves.append(move)
-                            else:
-                                del possibleTiles[move]
-    return possibleTilesCpy, possibleTiles # RETORNAR KILLING MOVES TB E USAR NA DECISAO FINAL
 
 def predictClosedAreas(me: dict, board : dict):
     nextTiles = avoidAllSnakes(me, board)
@@ -185,6 +170,29 @@ def predictClosedAreas(me: dict, board : dict):
                 queue.put(adjTiles["right"])
     print("afterArea: ",resultingTiles)
     return resultingTiles
+
+def predictPossibleSnakes(me : dict, board : dict):
+    possibleTiles = predictClosedAreas(me,board)
+    if len(possibleTiles) == 0:
+        possibleTiles = avoidAllSnakes(me, board)
+    possibleTilesCpy = copy.deepcopy(possibleTiles)
+    killingMoves = []
+
+    for move in possibleTilesCpy:
+        if move in possibleTiles.keys():
+            for snake in board["snakes"]:
+                if snake["id"] != mySnakeID:
+                    snakeAdjacentTiles = getAdjacentTiles(snake["head"])
+                    for direction in ["up","down","left","right"]:
+                        if move in possibleTiles.keys():
+                            if snakeAdjacentTiles[direction] == possibleTiles[move]:
+                                if isMySizeBigger(me,snake):
+                                    if move not in killingMoves:
+                                        killingMoves.append(move)
+                                else:
+                                    del possibleTiles[move]
+    return possibleTilesCpy, possibleTiles # RETORNAR KILLING MOVES TB E USAR NA DECISAO FINAL
+
 
 def howManySnakeTiles(snakes : dict):
     sum = 0
