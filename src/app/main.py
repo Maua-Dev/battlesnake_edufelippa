@@ -16,6 +16,7 @@ app = FastAPI()
 mySnakeID = ""
 boardWidth = 40
 boardHeight = 40
+smallAreaSizes = {}
 
 @app.get("/")
 def read_root():
@@ -130,13 +131,18 @@ def avoidAllSnakes(me : dict, board : dict) :
     return possibleTiles
 
 def predictClosedAreas(me: dict, board : dict):
-    nextTiles = avoidAllSnakes(me, board)
+    previousNextTiles = avoidAllSnakes(me, board)
     resultingTiles = {}
-    fillSize = (boardWidth*boardHeight - howManySnakeTiles(board["snakes"]))/4 # número arbitrário de uma area grande o suficiente CALCULAR A PARTIR DA AREA DO MAPA - AREA OCUPADA
-    for move in nextTiles:              # Adicionar logica para, em ultimo caso, ignorar o predictClosedAreas
+    _smallAreaSizes = {}
+    nSnakes = len(board["snakes"])
+    if nSnakes == 1:
+        nSnakes = 2
+    fillSize = (boardWidth*boardHeight - howManySnakeTiles(board["snakes"]))/nSnakes # Area desocupada / numero de cobras
+    for move in previousNextTiles:
         queue = Queue()
-        queue.put(nextTiles[move])
+        queue.put(previousNextTiles[move])
         filledPositions = []
+        foundBigArea = False
         while not queue.empty():
             pos = queue.get()
             if pos["x"] < 0 or pos["y"] < 0 or pos["x"] >= boardWidth or pos["y"] >= boardHeight or \
@@ -144,22 +150,26 @@ def predictClosedAreas(me: dict, board : dict):
                 continue
             else:
                 filledPositions.append(pos)
-                if(len(filledPositions) >= fillSize): 
-                    print("filled: ", filledPositions)
-                    resultingTiles[move] = nextTiles[move]
+                if len(filledPositions) >= fillSize:
+                    foundBigArea = True
+                    resultingTiles[move] = previousNextTiles[move]
                     break
                 adjTiles = getAdjacentTiles(pos)
                 queue.put(adjTiles["up"])
                 queue.put(adjTiles["down"])
                 queue.put(adjTiles["left"])
                 queue.put(adjTiles["right"])
-    print("afterArea: ",resultingTiles)
+        if not foundBigArea:
+            _smallAreaSizes[move] = len(filledPositions)
+
+    global smallAreaSizes
+    smallAreaSizes = _smallAreaSizes
+    if not resultingTiles:
+        return previousNextTiles
     return resultingTiles
 
 def predictPossibleSnakes(me : dict, board : dict):
     possibleTiles = predictClosedAreas(me,board)
-    if len(possibleTiles) == 0:
-        possibleTiles = avoidAllSnakes(me, board)
     possibleTilesCpy = copy.deepcopy(possibleTiles)
     killingMoves = []
 
@@ -181,10 +191,27 @@ def predictPossibleSnakes(me : dict, board : dict):
     else:
         return possibleTilesCpy # RETORNAR KILLING MOVES TB E USAR NA DECISAO FINAL
 
-def bestMoveForFood(me : dict, board : dict):
-    
+def chooseBiggestArea(me: dict, board : dict): # Apenas se so sobraram areas pequenas
     possibleMoves = predictPossibleSnakes(me, board)
+
+    if not smallAreaSizes:
+        return possibleMoves
+
+    maxAreaSize = -1
+    biggestAreaMove = ""
+
+    for move in possibleMoves:
+        if move not in smallAreaSizes.keys():
+            return possibleMoves
+        if smallAreaSizes[move] > maxAreaSize:
+            maxAreaSize = smallAreaSizes[move]
+            biggestAreaMove = move
+    return {biggestAreaMove : possibleMoves[biggestAreaMove]}
+
+def bestMoveForFood(me : dict, board : dict):
+    possibleMoves = chooseBiggestArea(me, board)
     remainingMoves = len(possibleMoves)
+
     if remainingMoves < 2:
         return possibleMoves
 
@@ -206,7 +233,7 @@ def bestMoveForFood(me : dict, board : dict):
             del possibleMoves[move]
             remainingMoves -= 1
             if remainingMoves < 2:
-                break
+                return possibleMoves
 
     return possibleMoves
 
@@ -249,7 +276,7 @@ def isMySizeBigger(me : dict, snake : dict):
         return False
 
 def hasSnakeEaten(snake : dict):
-    if(snake["health"] == 100):
+    if snake["health"] == 100:
         return True
 # Se a vida estiver em 100, o rabo não vai andar
 
