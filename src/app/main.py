@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from mangum import Mangum
-import random
-import copy
+from random import choice
+from copy import deepcopy
 from queue import Queue
 
 class body(BaseModel):
@@ -113,7 +113,7 @@ def avoidEdges(me : dict) :
 
 def avoidAllSnakes(me : dict, board : dict) :
     possibleTiles = avoidEdges(me)
-    possibleTilesCpy = copy.deepcopy(possibleTiles)
+    possibleTilesCpy = deepcopy(possibleTiles)
     for move in possibleTilesCpy:
         if move in possibleTiles.keys():
             for snake in board["snakes"]:
@@ -170,7 +170,7 @@ def predictClosedAreas(me: dict, board : dict):
 
 def predictPossibleSnakes(me : dict, board : dict):
     possibleTiles = predictClosedAreas(me,board)
-    possibleTilesCpy = copy.deepcopy(possibleTiles)
+    possibleTilesCpy = deepcopy(possibleTiles)
     killingMoves = []
 
     for move in possibleTilesCpy:
@@ -283,7 +283,7 @@ def hasSnakeEaten(snake : dict):
 def randomMove(possibleTiles : dict) :
     if len(list(possibleTiles.keys())) <= 0:
         return "down", True
-    move = random.choice(list(possibleTiles.keys()))
+    move = choice(list(possibleTiles.keys()))
     return move, False
 
 
