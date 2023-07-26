@@ -65,11 +65,24 @@ def end_func() :
 @app.post("/move")
 def move_func(request : body) :
 
-    possibleTiles = bestMoveForKillAndFood(request.you, request.board)
-    move, AmIDead = randomMove(possibleTiles)
+    global smallAreaSizes, killerMoves
+    smallAreaSizes = {}
+    killerMoves = []
+
+    possibleTiles = avoidEdges(request.you)
+    if len(possibleTiles) > 1:
+        possibleTiles = avoidAllSnakes(request.you, request.board, possibleTiles)
+    if len(possibleTiles) > 1:
+        possibleTiles = predictClosedAreas(request.you, request.board, possibleTiles)
+    if len(possibleTiles) > 1:
+        possibleTiles = predictPossibleSnakes(request.you, request.board, possibleTiles)
+
+    possibleTiles = chooseBiggestArea(request.you, request.board, possibleTiles) # Sempre retorna ao menos 1 move
+    possibleTiles = bestMoveForKillAndFood(request.you, request.board, possibleTiles) # Sempre retorna ao menos 1 move
+
+    move = randomMove(possibleTiles)
 
     print("Move: ", move)
-    print("deuRuim: ",AmIDead)
 
     return {"move" : move}
 
@@ -112,8 +125,7 @@ def avoidEdges(me : dict) :
 
     return possibleTiles
 
-def avoidAllSnakes(me : dict, board : dict) :
-    possibleTiles = avoidEdges(me)
+def avoidAllSnakes(me : dict, board : dict, possibleTiles : dict) :
     possibleTilesCpy = deepcopy(possibleTiles)
     for move in possibleTilesCpy:
         if move in possibleTiles.keys():
@@ -131,8 +143,7 @@ def avoidAllSnakes(me : dict, board : dict) :
                     index += 1
     return possibleTiles
 
-def predictClosedAreas(me: dict, board : dict):
-    previousNextTiles = avoidAllSnakes(me, board)
+def predictClosedAreas(me: dict, board : dict, previousNextTiles : dict):
     resultingTiles = {}
     _smallAreaSizes = {}
     nSnakes = len(board["snakes"])
@@ -169,8 +180,7 @@ def predictClosedAreas(me: dict, board : dict):
         return previousNextTiles
     return resultingTiles
 
-def predictPossibleSnakes(me : dict, board : dict):
-    possibleTiles = predictClosedAreas(me,board)
+def predictPossibleSnakes(me : dict, board : dict, possibleTiles : dict):
     possibleTilesCpy = deepcopy(possibleTiles)
     global killerMoves
     killerMoves = []
@@ -193,39 +203,37 @@ def predictPossibleSnakes(me : dict, board : dict):
     else:
         return possibleTilesCpy
 
-def chooseBiggestArea(me: dict, board : dict): # Apenas se so sobraram areas pequenas
-    possibleMoves = predictPossibleSnakes(me, board)
+def chooseBiggestArea(me: dict, board : dict, possibleTiles): # Apenas se so sobraram areas pequenas
 
     if not smallAreaSizes:
-        return possibleMoves
+        return possibleTiles
 
     maxAreaSize = -1
     biggestAreaMove = ""
 
-    for move in possibleMoves:
+    for move in possibleTiles:
         if move not in smallAreaSizes.keys():
-            return possibleMoves
+            return possibleTiles
         if smallAreaSizes[move] > maxAreaSize:
             maxAreaSize = smallAreaSizes[move]
             biggestAreaMove = move
-    return {biggestAreaMove : possibleMoves[biggestAreaMove]}
+    return {biggestAreaMove : possibleTiles[biggestAreaMove]}
 
-def bestMoveForKillAndFood(me : dict, board : dict):
-    possibleMoves = chooseBiggestArea(me, board)
-    remainingMoves = len(possibleMoves)
+def bestMoveForKillAndFood(me : dict, board : dict, possibleTiles : dict):
+    remainingMoves = len(possibleTiles)
     
     killerMovesDict = {}
     areThereKillerMoves = False
-    for move in possibleMoves:
+    for move in possibleTiles:
         if move in killerMoves:
             areThereKillerMoves = True
-            killerMovesDict[move] = possibleMoves[move]
+            killerMovesDict[move] = possibleTiles[move]
 
     if areThereKillerMoves:
         return killerMovesDict
 
     if remainingMoves < 2:
-        return possibleMoves
+        return possibleTiles
 
     myHead = me["head"]
     closestFood = findClosestPointFromMyPos(myHead, board["food"])
@@ -241,13 +249,13 @@ def bestMoveForKillAndFood(me : dict, board : dict):
 
 
     for move in badMoves:
-        if move in possibleMoves:
-            del possibleMoves[move]
+        if move in possibleTiles:
+            del possibleTiles[move]
             remainingMoves -= 1
             if remainingMoves < 2:
-                return possibleMoves
+                return possibleTiles
 
-    return possibleMoves
+    return possibleTiles
 
 def findClosestPointFromMyPos(myPos : dict, points : dict):
     minDist = -1
@@ -294,9 +302,9 @@ def hasSnakeEaten(snake : dict):
 
 def randomMove(possibleTiles : dict) :
     if len(list(possibleTiles.keys())) <= 0:
-        return "down", True
+        return "down" # Nunca devera ser chamado
     move = choice(list(possibleTiles.keys()))
-    return move, False
+    return move
 
 
 handler = Mangum(app, lifespan="off")
