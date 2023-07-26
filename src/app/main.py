@@ -16,8 +16,6 @@ app = FastAPI()
 mySnakeID = ""
 boardWidth = 40
 boardHeight = 40
-smallAreaSizes = {}
-killerMoves = []
 
 @app.get("/")
 def read_root():
@@ -65,11 +63,6 @@ def end_func() :
 @app.post("/move")
 def move_func(request : body) :
 
-    global smallAreaSizes, killerMoves
-    smallAreaSizes = {}
-    killerMoves = []
-    
-
     me = request.you
     board = request.board
 
@@ -78,12 +71,12 @@ def move_func(request : body) :
     if len(possibleTiles) > 1:
         possibleTiles = avoidAllSnakes(me, board, possibleTiles)
     if len(possibleTiles) > 1:
-        possibleTiles = predictClosedAreas(me, board, possibleTiles)
+        possibleTiles, smallAreaSizes = predictClosedAreas(me, board, possibleTiles)
     if len(possibleTiles) > 1:
-        possibleTiles = predictPossibleSnakes(me, board, possibleTiles)
+        possibleTiles, killerMoves = predictPossibleSnakes(me, board, possibleTiles)
 
-    possibleTiles = chooseBiggestArea(me, board, possibleTiles) # Sempre retorna ao menos 1 move
-    possibleTiles = bestMoveForKillAndFood(me, board, possibleTiles) # Sempre retorna ao menos 1 move
+    possibleTiles = chooseBiggestArea(me, board, possibleTiles, smallAreaSizes) # Sempre retorna ao menos 1 move
+    possibleTiles = bestMoveForKillAndFood(me, board, possibleTiles, killerMoves) # Sempre retorna ao menos 1 move
 
     move = randomMove(possibleTiles)
 
@@ -150,7 +143,7 @@ def avoidAllSnakes(me : dict, board : dict, possibleTiles : dict) :
 
 def predictClosedAreas(me: dict, board : dict, previousNextTiles : dict):
     resultingTiles = {}
-    _smallAreaSizes = {}
+    smallAreaSizes = {}
     nSnakes = len(board["snakes"])
     if nSnakes == 1:
         nSnakes = 2
@@ -177,17 +170,14 @@ def predictClosedAreas(me: dict, board : dict, previousNextTiles : dict):
                 queue.put(adjTiles["left"])
                 queue.put(adjTiles["right"])
         if not foundBigArea:
-            _smallAreaSizes[move] = len(filledPositions)
+            smallAreaSizes[move] = len(filledPositions)
 
-    global smallAreaSizes
-    smallAreaSizes = _smallAreaSizes
     if not resultingTiles:
-        return previousNextTiles
-    return resultingTiles
+        return previousNextTiles, smallAreaSizes
+    return resultingTiles, smallAreaSizes
 
 def predictPossibleSnakes(me : dict, board : dict, possibleTiles : dict):
     possibleTilesCpy = deepcopy(possibleTiles)
-    global killerMoves
     killerMoves = []
 
     for move in possibleTilesCpy:
@@ -204,11 +194,11 @@ def predictPossibleSnakes(me : dict, board : dict, possibleTiles : dict):
                                 else:
                                     del possibleTiles[move]
     if len(possibleTiles) > 0:
-        return possibleTiles
+        return possibleTiles, killerMoves
     else:
-        return possibleTilesCpy
+        return possibleTilesCpy, killerMoves
 
-def chooseBiggestArea(me: dict, board : dict, possibleTiles): # Apenas se so sobraram areas pequenas
+def chooseBiggestArea(me, board, possibleTiles, smallAreaSizes): # Apenas se so sobraram areas pequenas
 
     if not smallAreaSizes:
         return possibleTiles
@@ -224,7 +214,7 @@ def chooseBiggestArea(me: dict, board : dict, possibleTiles): # Apenas se so sob
             biggestAreaMove = move
     return {biggestAreaMove : possibleTiles[biggestAreaMove]}
 
-def bestMoveForKillAndFood(me : dict, board : dict, possibleTiles : dict):
+def bestMoveForKillAndFood(me, board, possibleTiles, killerMoves):
     remainingMoves = len(possibleTiles)
     
     killerMovesDict = {}
