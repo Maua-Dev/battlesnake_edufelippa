@@ -68,22 +68,17 @@ def move_func(request : body) :
     global smallAreaSizes, killerMoves
     smallAreaSizes = {}
     killerMoves = []
-    
 
-    me = request.you
-    board = request.board
-
-
-    possibleTiles = avoidEdges(me)
+    possibleTiles = avoidEdges(request.you)
     if len(possibleTiles) > 1:
-        possibleTiles = avoidAllSnakes(me, board, possibleTiles)
+        possibleTiles = avoidAllSnakes(request.you, request.board, possibleTiles)
     if len(possibleTiles) > 1:
-        possibleTiles = predictClosedAreas(me, board, possibleTiles)
+        possibleTiles = predictClosedAreas(request.you, request.board, possibleTiles)
     if len(possibleTiles) > 1:
-        possibleTiles = predictPossibleSnakes(me, board, possibleTiles)
+        possibleTiles = predictPossibleSnakes(request.you, request.board, possibleTiles)
 
-    possibleTiles = chooseBiggestArea(me, board, possibleTiles) # Sempre retorna ao menos 1 move
-    possibleTiles = bestMoveForKillAndFood(me, board, possibleTiles) # Sempre retorna ao menos 1 move
+    possibleTiles = chooseBiggestArea(request.you, request.board, possibleTiles) # Sempre retorna ao menos 1 move
+    possibleTiles = bestMoveForKillAndFood(request.you, request.board, possibleTiles) # Sempre retorna ao menos 1 move
 
     move = randomMove(possibleTiles)
 
