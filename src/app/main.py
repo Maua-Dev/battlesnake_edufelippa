@@ -17,6 +17,7 @@ mySnakeID = ""
 boardWidth = 40
 boardHeight = 40
 smallAreaSizes = {}
+killerMoves = []
 
 @app.get("/")
 def read_root():
@@ -64,7 +65,7 @@ def end_func() :
 @app.post("/move")
 def move_func(request : body) :
 
-    possibleTiles = bestMoveForFood(request.you, request.board)
+    possibleTiles = bestMoveForKillAndFood(request.you, request.board)
     move, AmIDead = randomMove(possibleTiles)
 
     print("Move: ", move)
@@ -171,7 +172,8 @@ def predictClosedAreas(me: dict, board : dict):
 def predictPossibleSnakes(me : dict, board : dict):
     possibleTiles = predictClosedAreas(me,board)
     possibleTilesCpy = deepcopy(possibleTiles)
-    killingMoves = []
+    global killerMoves
+    killerMoves = []
 
     for move in possibleTilesCpy:
         if move in possibleTiles.keys():
@@ -182,14 +184,14 @@ def predictPossibleSnakes(me : dict, board : dict):
                         if move in possibleTiles.keys():
                             if snakeAdjacentTiles[direction] == possibleTiles[move]:
                                 if isMySizeBigger(me,snake):
-                                    if move not in killingMoves:
-                                        killingMoves.append(move)
+                                    if move not in killerMoves:
+                                        killerMoves.append(move)
                                 else:
                                     del possibleTiles[move]
     if len(possibleTiles) > 0:
         return possibleTiles
     else:
-        return possibleTilesCpy # RETORNAR KILLING MOVES TB E USAR NA DECISAO FINAL
+        return possibleTilesCpy
 
 def chooseBiggestArea(me: dict, board : dict): # Apenas se so sobraram areas pequenas
     possibleMoves = predictPossibleSnakes(me, board)
@@ -208,9 +210,19 @@ def chooseBiggestArea(me: dict, board : dict): # Apenas se so sobraram areas peq
             biggestAreaMove = move
     return {biggestAreaMove : possibleMoves[biggestAreaMove]}
 
-def bestMoveForFood(me : dict, board : dict):
+def bestMoveForKillAndFood(me : dict, board : dict):
     possibleMoves = chooseBiggestArea(me, board)
     remainingMoves = len(possibleMoves)
+    
+    killerMovesDict = {}
+    areThereKillerMoves = False
+    for move in possibleMoves:
+        if move in killerMoves:
+            areThereKillerMoves = True
+            killerMovesDict[move] = possibleMoves[move]
+
+    if areThereKillerMoves:
+        return killerMovesDict
 
     if remainingMoves < 2:
         return possibleMoves
