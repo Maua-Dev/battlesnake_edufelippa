@@ -134,7 +134,7 @@ def avoidAllSnakes(me : dict, board : dict) :
 def predictClosedAreas(me: dict, board : dict):
     previousNextTiles = avoidAllSnakes(me, board)
     resultingTiles = {}
-    _smallAreaSizes = {}
+    smallAreaSizes = {}
     nSnakes = len(board["snakes"])
     if nSnakes == 1:
         nSnakes = 2
@@ -161,13 +161,11 @@ def predictClosedAreas(me: dict, board : dict):
                 queue.put(adjTiles["left"])
                 queue.put(adjTiles["right"])
         if not foundBigArea:
-            _smallAreaSizes[move] = len(filledPositions)
+            smallAreaSizes[move] = len(filledPositions)
 
-    global smallAreaSizes
-    smallAreaSizes = _smallAreaSizes
     if not resultingTiles:
-        return previousNextTiles
-    return resultingTiles
+        return previousNextTiles, smallAreaSizes
+    return resultingTiles, smallAreaSizes
 
 def predictPossibleSnakes(me : dict, board : dict):
     possibleTiles = predictClosedAreas(me,board)
@@ -189,7 +187,7 @@ def predictPossibleSnakes(me : dict, board : dict):
                                 else:
                                     del possibleTiles[move]
     if len(possibleTiles) > 0:
-        return possibleTiles
+        return possibleTiles, killerMoves
     else:
         return possibleTilesCpy
 
